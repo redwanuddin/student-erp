@@ -37,18 +37,13 @@ export default function AdminDashboard() {
     router.push('/login');
   };
 
-  // NEW FUNCTION: This updates the database when you change the dropdown
   const handleStatusChange = async (id: string, newStatus: string) => {
-    // 1. Update the database
     const { error } = await supabase
       .from('students')
       .update({ status: newStatus })
       .eq('id', id);
 
-    if (error) {
-      alert('Error updating status: ' + error.message);
-    } else {
-      // 2. Update the screen instantly without refreshing
+    if (!error) {
       setStudents(students.map(s => s.id === id ? { ...s, status: newStatus } : s));
     }
   };
@@ -74,26 +69,24 @@ export default function AdminDashboard() {
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="p-4 font-semibold text-gray-600">Date</th>
                 <th className="p-4 font-semibold text-gray-600">Name</th>
-                <th className="p-4 font-semibold text-gray-600">Phone</th>
-                <th className="p-4 font-semibold text-gray-600">Email</th>
                 <th className="p-4 font-semibold text-gray-600">Destination</th>
                 <th className="p-4 font-semibold text-gray-600">Status</th>
+                {/* NEW: Follow-up column */}
+                <th className="p-4 font-semibold text-gray-600">Follow-up</th>
               </tr>
             </thead>
             <tbody>
               {students.map((student) => (
                 <tr key={student.id} className="border-b hover:bg-gray-50">
-                  <td className="p-4 text-sm text-gray-500">
-                    {new Date(student.created_at).toLocaleDateString()}
+                  <td className="p-4 font-medium">
+                    <Link href={`/admin/student/${student.id}`} className="text-blue-600 hover:underline">
+                      {student.full_name}
+                    </Link>
+                    <div className="text-xs text-gray-500">{student.phone}</div>
                   </td>
-                  <td className="p-4 font-medium text-black">{student.full_name}</td>
-                  <td className="p-4 text-black">{student.phone}</td>
-                  <td className="p-4 text-black">{student.email}</td>
                   <td className="p-4 text-black">{student.destination}</td>
                   <td className="p-4">
-                    {/* NEW: The dropdown menu for status */}
                     <select
                       value={student.status || 'New'}
                       onChange={(e) => handleStatusChange(student.id, e.target.value)}
@@ -106,6 +99,18 @@ export default function AdminDashboard() {
                       <option value="Visa">Visa</option>
                       <option value="Closed">Closed</option>
                     </select>
+                  </td>
+                  {/* NEW: Show the follow-up date, highlight in red if it's today or past */}
+                  <td className="p-4 text-sm">
+                    {student.follow_up_date ? (
+                      <span className={`font-bold ${
+                        new Date(student.follow_up_date) <= new Date() ? 'text-red-600' : 'text-gray-800'
+                      }`}>
+                        {new Date(student.follow_up_date).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
