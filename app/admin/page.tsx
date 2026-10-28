@@ -12,25 +12,19 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const checkAuthAndFetch = async () => {
-      // 1. Check if the user is logged in
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session) {
-        // Not logged in? Kick them to the login page.
         router.push('/login');
         return;
       }
 
-      // 2. If logged in, fetch the students
       const { data, error } = await supabase
         .from('students')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching students:', error);
-      } else {
-        setStudents(data || []);
+      if (!error && data) {
+        setStudents(data);
       }
       setLoading(false);
     };
@@ -38,19 +32,28 @@ export default function AdminDashboard() {
     checkAuthAndFetch();
   }, [router]);
 
-  // Add a logout function
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <p className="text-xl text-gray-600">Checking security...</p>
-      </div>
-    );
-  }
+  // NEW FUNCTION: This updates the database when you change the dropdown
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    // 1. Update the database
+    const { error } = await supabase
+      .from('students')
+      .update({ status: newStatus })
+      .eq('id', id);
+
+    if (error) {
+      alert('Error updating status: ' + error.message);
+    } else {
+      // 2. Update the screen instantly without refreshing
+      setStudents(students.map(s => s.id === id ? { ...s, status: newStatus } : s));
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center text-black">Loading...</div>;
 
   return (
     <main className="min-h-screen p-8 bg-gray-100">
@@ -61,10 +64,7 @@ export default function AdminDashboard() {
             <Link href="/" className="text-blue-600 hover:underline mt-2">
               Public Form
             </Link>
-            <button 
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-            >
+            <button onClick={handleLogout} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
               Log Out
             </button>
           </div>
@@ -83,30 +83,32 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {students.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-500">
-                    No students found. Go submit the form first!
+              {students.map((student) => (
+                <tr key={student.id} className="border-b hover:bg-gray-50">
+                  <td className="p-4 text-sm text-gray-500">
+                    {new Date(student.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="p-4 font-medium text-black">{student.full_name}</td>
+                  <td className="p-4 text-black">{student.phone}</td>
+                  <td className="p-4 text-black">{student.email}</td>
+                  <td className="p-4 text-black">{student.destination}</td>
+                  <td className="p-4">
+                    {/* NEW: The dropdown menu for status */}
+                    <select
+                      value={student.status || 'New'}
+                      onChange={(e) => handleStatusChange(student.id, e.target.value)}
+                      className="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 cursor-pointer font-semibold"
+                    >
+                      <option value="New">New</option>
+                      <option value="Contacted">Contacted</option>
+                      <option value="Counseling">Counseling</option>
+                      <option value="Applied">Applied</option>
+                      <option value="Visa">Visa</option>
+                      <option value="Closed">Closed</option>
+                    </select>
                   </td>
                 </tr>
-              ) : (
-                students.map((student) => (
-                  <tr key={student.id} className="border-b hover:bg-gray-50">
-                    <td className="p-4 text-sm text-gray-500">
-                      {new Date(student.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="p-4 font-medium text-black">{student.full_name}</td>
-                    <td className="p-4 text-black">{student.phone}</td>
-                    <td className="p-4 text-black">{student.email}</td>
-                    <td className="p-4 text-black">{student.destination}</td>
-                    <td className="p-4">
-                      <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                        {student.status || 'New'}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
