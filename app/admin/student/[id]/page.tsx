@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react'; // Added Suspense
 import { supabase } from '../../../lib/supabase';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function StudentProfile() {
+// 1. We renamed your original function to StudentProfileContent
+function StudentProfileContent() {
   const params = useParams();
   const router = useRouter();
   const [student, setStudent] = useState<any>(null);
@@ -16,7 +17,6 @@ export default function StudentProfile() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
-  // NEW: State for documents
   const [documents, setDocuments] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
 
@@ -39,7 +39,6 @@ export default function StudentProfile() {
         if (data.notes) setNotes(data.notes);
         if (data.follow_up_date) setFollowUpDate(data.follow_up_date);
         
-        // NEW: Fetch their documents
         fetchDocuments();
       }
       setLoading(false);
@@ -48,26 +47,21 @@ export default function StudentProfile() {
     fetchStudent();
   }, [params.id, router]);
 
-  // NEW: Fetch the list of uploaded files
   const fetchDocuments = async () => {
     const { data, error } = await supabase.storage
       .from('student-documents')
-      .list(params.id as string); // Looks inside a folder named after the student's ID
+      .list(params.id as string);
 
     if (!error && data) {
       setDocuments(data);
     }
   };
 
-  // NEW: Handle the file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
-    
-    // We create a unique name for the file so two students can both upload "passport.pdf"
-    // Format: studentID/17123456789_passport.pdf
     const filePath = `${student.id}/${Date.now()}_${file.name}`;
 
     const { error } = await supabase.storage
@@ -77,12 +71,10 @@ export default function StudentProfile() {
     if (error) {
       alert('Error uploading file: ' + error.message);
     } else {
-      // Refresh the document list immediately
       fetchDocuments();
     }
     
     setUploading(false);
-    // Clear the input so you can upload another file
     e.target.value = '';
   };
 
@@ -145,7 +137,6 @@ export default function StudentProfile() {
           </div>
         </div>
 
-        {/* NEW: Document Upload Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Student Documents</h2>
           
@@ -165,7 +156,6 @@ export default function StudentProfile() {
               <li className="py-4 text-gray-500 text-center">No documents uploaded yet.</li>
             ) : (
               documents.map((doc) => {
-                // Get the public link to view/download the file
                 const { data: urlData } = supabase.storage
                   .from('student-documents')
                   .getPublicUrl(`${student.id}/${doc.name}`);
@@ -173,7 +163,6 @@ export default function StudentProfile() {
                 return (
                   <li key={doc.name} className="py-3 flex justify-between items-center">
                     <span className="text-gray-800 font-medium truncate max-w-xs">
-                      {/* We clean up the timestamp from the name so it looks nice */}
                       {doc.name.split('_').slice(1).join('_') || doc.name}
                     </span>
                     <a 
@@ -233,5 +222,14 @@ export default function StudentProfile() {
         
       </div>
     </main>
+  );
+}
+
+// 2. This is the new default export that wraps everything in Suspense
+export default function StudentProfile() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-black">Loading profile...</div>}>
+      <StudentProfileContent />
+    </Suspense>
   );
 }
