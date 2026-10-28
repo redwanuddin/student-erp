@@ -68,9 +68,11 @@ function ApplicationsContent() {
                     <td className="p-4 text-sm text-gray-500">
                       {new Date(app.created_at).toLocaleDateString()}
                     </td>
-                    <td className="p-4 font-medium text-black">
-                      {app.given_name} {app.surname}
-                    </td>
+                    <td className="p-4 font-medium">
+  <Link href={`/admin/applications/${app.id}`} className="text-blue-600 hover:underline">
+    {app.given_name} {app.surname}
+  </Link>
+</td>
                     <td className="p-4 text-black">{app.passport_number || 'N/A'}</td>
                     <td className="p-4">
                       <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded">
