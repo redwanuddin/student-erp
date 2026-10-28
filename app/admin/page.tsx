@@ -55,7 +55,10 @@ export default function AdminDashboard() {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-          <div className="flex gap-4">
+                    <div className="flex gap-4 items-center">
+            <Link href="/admin/applications" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold">
+              View Applications
+            </Link>
             <Link href="/" className="text-blue-600 hover:underline mt-2">
               Public Form
             </Link>
