@@ -5,8 +5,11 @@ import { supabase } from '../lib/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-// 🔧 DUMMY MONEY — delete this block and wire to payments/expenses tables later
+type Period = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'lifetime';
+
 type DummyMoney = { revenue: number; expenses: number; revDelta: number; expDelta: number };
+
+// 🔧 DUMMY MONEY — swap for real payments/expenses tables later
 const DUMMY_MONEY: Record<Period, DummyMoney> = {
   today:     { revenue: 15000,   expenses: 8000,   revDelta: 2000,   expDelta: 500 },
   yesterday: { revenue: 12000,   expenses: 9000,   revDelta: -1000,  expDelta: -1000 },
@@ -16,13 +19,10 @@ const DUMMY_MONEY: Record<Period, DummyMoney> = {
   lifetime:  { revenue: 2400000, expenses: 1100000, revDelta: 0,     expDelta: 0 },
 };
 
-type Period = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'lifetime';
-
 export default function AdminDashboard() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [period, setPeriod] = useState<Period>('month');
   const router = useRouter();
 
   useEffect(() => {
@@ -47,7 +47,18 @@ export default function AdminDashboard() {
     router.push('/login');
   };
 
-  // ---- date range helpers ----
+  if (loading) return <div className="p-8 text-center text-black">Loading dashboard...</div>;
+
+  // Date-dependent rendering lives inside DashboardView and only mounts
+  // after loading flips to false (client-side), so the prerender never calls new Date().
+  return <DashboardView clients={clients} onLogout={handleLogout} error={error} />;
+}
+
+function DashboardView({
+  clients, onLogout, error,
+}: { clients: any[]; onLogout: () => void; error: string }) {
+  const [period, setPeriod] = useState<Period>('month');
+
   const now = new Date();
   const monthName = now.toLocaleDateString('en-US', { month: 'long' });
   const yearNum = String(now.getFullYear());
@@ -71,7 +82,6 @@ export default function AdminDashboard() {
   const countIn = (predicate: (c: any) => boolean, start: Date, end: Date) =>
     clients.filter(c => predicate(c) && inRange(c, start, end)).length;
 
-  // ---- stat filters ----
   const isLead       = (c: any) => ['New', 'Lead'].includes(c.status || '');
   const isDraft      = (c: any) => (c.status || 'Draft') === 'Draft';
   const isProcessing = (c: any) => ['Contacted', 'Counseling', 'Applied', 'Visa'].includes(c.status || '');
@@ -84,16 +94,15 @@ export default function AdminDashboard() {
       return { curr, prev };
     };
     return {
-      leads: mk(isLead),
-      drafts: mk(isDraft),
-      clients: mk(isAny),
+      leads:      mk(isLead),
+      drafts:     mk(isDraft),
+      clients:    mk(isAny),
       processing: mk(isProcessing),
     };
   }, [clients, range, period]);
 
   const money = DUMMY_MONEY[period];
 
-  // ---- live sections (not filtered) ----
   const pipeline = useMemo(() => {
     const buckets = ['Draft', 'New', 'Contacted', 'Counseling', 'Applied', 'Visa', 'Closed'];
     return buckets.map(b => ({
@@ -136,8 +145,6 @@ export default function AdminDashboard() {
     ? new Date(Math.min(...clients.map(c => new Date(c.created_at).getTime())))
     : null;
 
-  if (loading) return <div className="p-8 text-center text-black">Loading dashboard...</div>;
-
   return (
     <main className="min-h-screen bg-gray-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -151,7 +158,7 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap gap-3">
             <Link href="/admin/applications" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold text-sm">All Applications</Link>
             <Link href="/" className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 font-semibold text-sm">Public Form</Link>
-            <button onClick={handleLogout} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-semibold text-sm">Log Out</button>
+            <button onClick={onLogout} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-semibold text-sm">Log Out</button>
           </div>
         </div>
 
@@ -179,9 +186,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ==== 6 STAT CARDS — Leads, Drafts, Clients, Processing, Revenue, Expenses ==== */}
+        {/* 6 STAT CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-
           <StatCard
             label="Leads"
             value={stats.leads.curr}
@@ -212,7 +218,7 @@ export default function AdminDashboard() {
             comparison={
               period === 'lifetime'
                 ? { text: 'all time', color: 'gray' }
-                : { text: `${money.revDelta >= 0 ? '+' : ''}${fmt(Math.abs(money.revDelta))} ${periodLabel[period]}`, color: money.revDelta >= 0 ? 'green' : 'red' }
+                : { text: `${money.revDelta >= 0 ? '+' : '-'}${fmt(Math.abs(money.revDelta))} ${periodLabel[period]}`, color: money.revDelta >= 0 ? 'green' : 'red' }
             }
             color="green"
             dummy
@@ -230,7 +236,7 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* Net profit strip */}
+        {/* Net profit */}
         <div className={`rounded-lg p-5 mb-8 shadow ${netProfit >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div>
@@ -340,7 +346,7 @@ export default function AdminDashboard() {
   );
 }
 
-// ---------- date helper ----------
+// ---------- helpers ----------
 
 function getRange(period: Period) {
   const now = new Date();
@@ -411,8 +417,6 @@ function makeComparison(
     color: delta > 0 ? 'green' : 'red',
   };
 }
-
-// ---------- components ----------
 
 function StatCard({
   label, value, comparison, color, dummy = false,
