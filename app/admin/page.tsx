@@ -281,7 +281,7 @@ function DashboardView({
               <ul className="space-y-3">
                 {overdue.map(c => (
                   <li key={c.id}>
-                    <Link href={`/admin/applications/${c.id}`} className="block p-3 border border-red-200 rounded hover:bg-red-50">
+                    <Link href={`/admin/clients/${c.id}`} className="block p-3 border border-red-200 rounded hover:bg-red-50">
                       <p className="font-semibold text-gray-800 text-sm">{c.given_name} {c.surname}</p>
                       <p className="text-xs text-red-600 font-semibold mt-0.5">Due {new Date(c.follow_up_date).toLocaleDateString()}</p>
                     </Link>
@@ -306,7 +306,7 @@ function DashboardView({
                 {recent.map(c => (
                   <li key={c.id} className="py-3 flex items-center justify-between">
                     <div>
-                      <Link href={`/admin/applications/${c.id}`} className="font-semibold text-gray-800 hover:text-blue-600 text-sm">
+                      <Link href={`/admin/clients/${c.id}`} className="font-semibold text-gray-800 hover:text-blue-600 text-sm">
                         {c.given_name} {c.surname}
                       </Link>
                       <p className="text-xs text-gray-500">{c.passport_number || '—'} · {new Date(c.created_at).toLocaleDateString()}</p>
@@ -328,7 +328,7 @@ function DashboardView({
                 {upcoming.map(c => (
                   <li key={c.id} className="py-3 flex items-center justify-between">
                     <div>
-                      <Link href={`/admin/applications/${c.id}`} className="font-semibold text-gray-800 hover:text-blue-600 text-sm">
+                      <Link href={`/admin/clients/${c.id}`} className="font-semibold text-gray-800 hover:text-blue-600 text-sm">
                         {c.given_name} {c.surname}
                       </Link>
                       <p className="text-xs text-gray-500">{new Date(c.follow_up_date).toLocaleDateString()}</p>
