@@ -1,235 +1,145 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react'; // Added Suspense
+import { useEffect, useState, Suspense } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// 1. We renamed your original function to StudentProfileContent
-function StudentProfileContent() {
+function ApplicationDetailContent() {
   const params = useParams();
   const router = useRouter();
-  const [student, setStudent] = useState<any>(null);
+  const [app, setApp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
-  const [notes, setNotes] = useState('');
-  const [followUpDate, setFollowUpDate] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState('');
-
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    const fetchStudent = async () => {
+    const fetchApp = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login');
         return;
       }
-
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('id', params.id)
-        .single();
-
-      if (!error && data) {
-        setStudent(data);
-        if (data.notes) setNotes(data.notes);
-        if (data.follow_up_date) setFollowUpDate(data.follow_up_date);
-        
-        fetchDocuments();
-      }
+      const { data, error } = await supabase.from('applications').select('*').eq('id', params.id).single();
+      if (!error && data) setApp(data);
       setLoading(false);
     };
-
-    fetchStudent();
+    fetchApp();
   }, [params.id, router]);
 
-  const fetchDocuments = async () => {
-    const { data, error } = await supabase.storage
-      .from('student-documents')
-      .list(params.id as string);
-
-    if (!error && data) {
-      setDocuments(data);
-    }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    const filePath = `${student.id}/${Date.now()}_${file.name}`;
-
-    const { error } = await supabase.storage
-      .from('student-documents')
-      .upload(filePath, file);
-
-    if (error) {
-      alert('Error uploading file: ' + error.message);
-    } else {
-      fetchDocuments();
-    }
-    
-    setUploading(false);
-    e.target.value = '';
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    setSaveMessage('');
-
-    const { error } = await supabase
-      .from('students')
-      .update({ 
-        notes: notes,
-        follow_up_date: followUpDate || null
-      })
-      .eq('id', params.id);
-
-    if (error) {
-      setSaveMessage('Error saving: ' + error.message);
-    } else {
-      setSaveMessage('Saved successfully!');
-      setTimeout(() => setSaveMessage(''), 3000);
-    }
-    setSaving(false);
-  };
-
-  if (loading) return <div className="p-8 text-center text-black">Loading profile...</div>;
-  if (!student) return <div className="p-8 text-center text-black">Student not found.</div>;
+  if (loading) return <div className="p-8 text-center text-black">Loading...</div>;
+  if (!app) return <div className="p-8 text-center text-black">Application not found.</div>;
 
   return (
-    <main className="min-h-screen p-8 bg-gray-100">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/admin" className="text-blue-600 hover:underline font-semibold">
-            &larr; Back to Dashboard
-          </Link>
+    <main className="min-h-screen p-4 md:p-8 bg-gray-100">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <Link href="/admin/applications" className="text-blue-600 hover:underline font-semibold">&larr; Back</Link>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-          <div className="bg-blue-600 p-6 text-white">
-            <h1 className="text-3xl font-bold">{student.full_name}</h1>
-            <p className="text-blue-100 mt-1">Student ID: {student.id}</p>
+        {/* Header & Passport Details */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+          <div className="bg-green-600 p-6 text-white">
+            <h1 className="text-3xl font-bold">{app.given_name} {app.surname}</h1>
+            <p className="text-green-100 mt-1">Status: {app.status || 'Draft'}</p>
           </div>
-
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Phone Number</h3>
-              <p className="mt-1 text-lg text-black">{student.phone}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Email Address</h3>
-              <p className="mt-1 text-lg text-black">{student.email}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Destination Country</h3>
-              <p className="mt-1 text-lg text-black">{student.destination}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Current Status</h3>
-              <p className="mt-1 text-lg font-bold text-blue-600">{student.status || 'New'}</p>
-            </div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">Passport Number</h3><p className="mt-1 text-lg text-black font-medium">{app.passport_number || 'N/A'}</p></div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">Date of Birth</h3><p className="mt-1 text-lg text-black font-medium">{app.date_of_birth || 'N/A'}</p></div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">Gender</h3><p className="mt-1 text-lg text-black font-medium">{app.gender || 'N/A'}</p></div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">Place of Birth</h3><p className="mt-1 text-lg text-black font-medium">{app.place_of_birth || 'N/A'}</p></div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">National ID (NID)</h3><p className="mt-1 text-lg text-black font-medium">{app.nid_number || 'N/A'}</p></div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">Passport Issue Date</h3><p className="mt-1 text-lg text-black font-medium">{app.passport_issue_date || 'N/A'}</p></div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">Passport Expiry Date</h3><p className="mt-1 text-lg text-black font-medium">{app.passport_expiry_date || 'N/A'}</p></div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">Father's Name</h3><p className="mt-1 text-lg text-black font-medium">{app.father_name || 'N/A'}</p></div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">Mother's Name</h3><p className="mt-1 text-lg text-black font-medium">{app.mother_name || 'N/A'}</p></div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Student Documents</h2>
           
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-600 mb-2">Upload Passport, Certificates, etc.</label>
-            <input 
-              type="file" 
-              onChange={handleFileUpload}
-              disabled={uploading}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-            />
-            {uploading && <p className="text-blue-600 mt-2 font-semibold">Uploading your file, please wait...</p>}
+          <div className="p-6 border-t grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50">
+            <div className="md:col-span-3"><h3 className="text-sm font-semibold text-gray-500 uppercase">Address</h3><p className="mt-1 text-lg text-black font-medium">{app.address || 'N/A'}</p></div>
+            <div><h3 className="text-sm font-semibold text-gray-500 uppercase">Post Code</h3><p className="mt-1 text-lg text-black font-medium">{app.post_code || 'N/A'}</p></div>
+            <div className="md:col-span-2"><h3 className="text-sm font-semibold text-gray-500 uppercase">District</h3><p className="mt-1 text-lg text-black font-medium">{app.district || 'N/A'}</p></div>
           </div>
-
-          <ul className="divide-y divide-gray-200 border-t border-gray-200">
-            {documents.length === 0 ? (
-              <li className="py-4 text-gray-500 text-center">No documents uploaded yet.</li>
-            ) : (
-              documents.map((doc) => {
-                const { data: urlData } = supabase.storage
-                  .from('student-documents')
-                  .getPublicUrl(`${student.id}/${doc.name}`);
-
-                return (
-                  <li key={doc.name} className="py-3 flex justify-between items-center">
-                    <span className="text-gray-800 font-medium truncate max-w-xs">
-                      {doc.name.split('_').slice(1).join('_') || doc.name}
-                    </span>
-                    <a 
-                      href={urlData.publicUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline font-semibold text-sm"
-                    >
-                      View / Download
-                    </a>
-                  </li>
-                );
-              })
-            )}
-          </ul>
         </div>
 
+        {/* Academic Details */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Academic Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="font-bold text-blue-800 mb-2">1. College / Equivalent</h3>
+              <ul className="text-sm text-gray-700 space-y-2">
+                <li><strong>Type:</strong> {app.hsc_type || 'N/A'}</li>
+                <li><strong>Result Date:</strong> {app.hsc_result_date || 'N/A'}</li>
+                <li><strong>GPA:</strong> {app.hsc_gpa || 'N/A'}</li>
+                <li><strong>Subject:</strong> {app.hsc_subject || 'N/A'}</li>
+                <li><strong>Board:</strong> {app.hsc_board || 'N/A'}</li>
+                <li><strong>City:</strong> {app.hsc_city || 'N/A'}</li>
+                <li><strong>Institute:</strong> {app.hsc_institute || 'N/A'}</li>
+                <li><strong>Email:</strong> {app.hsc_email || 'N/A'}</li>
+                <li><strong>Website:</strong> {app.hsc_website || 'N/A'}</li>
+                <li><strong>Class Start Date:</strong> {app.hsc_duration || 'N/A'}</li>
+                <li><strong>Address:</strong> {app.hsc_address || 'N/A'}</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-bold text-blue-800 mb-2">2. High School / Equivalent</h3>
+              <ul className="text-sm text-gray-700 space-y-2">
+                <li><strong>Type:</strong> {app.ssc_type || 'N/A'}</li>
+                <li><strong>Result Date:</strong> {app.ssc_result_date || 'N/A'}</li>
+                <li><strong>GPA:</strong> {app.ssc_gpa || 'N/A'}</li>
+                <li><strong>Subject:</strong> {app.ssc_subject || 'N/A'}</li>
+                <li><strong>Board:</strong> {app.ssc_board || 'N/A'}</li>
+                <li><strong>City:</strong> {app.ssc_city || 'N/A'}</li>
+                <li><strong>Institute:</strong> {app.ssc_institute || 'N/A'}</li>
+                <li><strong>Email:</strong> {app.ssc_email || 'N/A'}</li>
+                <li><strong>Website:</strong> {app.ssc_website || 'N/A'}</li>
+                <li><strong>Class Start Date:</strong> {app.ssc_duration || 'N/A'}</li>
+                <li><strong>Address:</strong> {app.ssc_address || 'N/A'}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-4 border-t">
+             <h3 className="font-bold text-blue-800 mb-2">English Test</h3>
+             {app.english_test_name === 'Not taken' ? (
+               <p className="text-sm text-gray-700">Student has not taken an English test.</p>
+             ) : (
+               <ul className="text-sm text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-2">
+                 <li><strong>Test:</strong> {app.english_test_name}</li>
+                 <li><strong>Overall Score:</strong> {app.english_overall_score || 'N/A'}</li>
+                 <li><strong>Listening:</strong> {app.english_listening || 'N/A'}</li>
+                 <li><strong>Reading:</strong> {app.english_reading || 'N/A'}</li>
+                 <li><strong>Writing:</strong> {app.english_writing || 'N/A'}</li>
+                 <li><strong>Speaking:</strong> {app.english_speaking || 'N/A'}</li>
+                 <li><strong>Test Date:</strong> {app.english_test_date || 'N/A'}</li>
+                 <li><strong>Ref Number:</strong> {app.english_ref_number || 'N/A'}</li>
+               </ul>
+             )}
+          </div>
+        </div>
+
+        {/* Documents Section */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Counseling & Follow-up</h2>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-600 mb-1">Next Follow-up Date</label>
-            <input
-              type="date"
-              value={followUpDate}
-              onChange={(e) => setFollowUpDate(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg text-black focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-600 mb-1">Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Type your notes here..."
-              rows={5}
-              className="w-full p-3 border border-gray-300 rounded-lg text-black focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-700 disabled:bg-gray-400"
-            >
-              {saving ? 'Saving...' : 'Save Details'}
-            </button>
-            {saveMessage && (
-              <span className={`font-semibold ${saveMessage.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
-                {saveMessage}
-              </span>
-            )}
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Uploaded Documents</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border p-4 rounded-lg text-center bg-gray-50">
+              <h3 className="font-semibold text-gray-700 mb-3">Passport</h3>
+              {app.passport_url ? <a href={app.passport_url} target="_blank" className="bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700 inline-block w-full">View File</a> : <span className="text-red-500 font-semibold">Missing</span>}
+            </div>
+            <div className="border p-4 rounded-lg text-center bg-gray-50">
+              <h3 className="font-semibold text-gray-700 mb-3">College Cert</h3>
+              {app.hsc_cert_url ? <a href={app.hsc_cert_url} target="_blank" className="bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700 inline-block w-full">View File</a> : <span className="text-gray-400 font-semibold">Not Provided</span>}
+            </div>
+            <div className="border p-4 rounded-lg text-center bg-gray-50">
+              <h3 className="font-semibold text-gray-700 mb-3">High School Cert</h3>
+              {app.ssc_cert_url ? <a href={app.ssc_cert_url} target="_blank" className="bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700 inline-block w-full">View File</a> : <span className="text-gray-400 font-semibold">Not Provided</span>}
+            </div>
           </div>
         </div>
-        
       </div>
     </main>
   );
 }
 
-// 2. This is the new default export that wraps everything in Suspense
-export default function StudentProfile() {
-  return (
-    <Suspense fallback={<div className="p-8 text-center text-black">Loading profile...</div>}>
-      <StudentProfileContent />
-    </Suspense>
-  );
+export default function ApplicationDetailPage() {
+  return <Suspense fallback={<div className="p-8 text-center text-black">Loading...</div>}><ApplicationDetailContent /></Suspense>;
 }

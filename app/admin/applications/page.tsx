@@ -19,7 +19,7 @@ function ApplicationsContent() {
       }
 
       const { data, error } = await supabase
-        .from('applications')
+        .from('clients')
         .select('*')
         .order('created_at', { ascending: false });
 
